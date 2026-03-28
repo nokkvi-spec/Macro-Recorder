@@ -1,0 +1,6 @@
+*.bat
+/.venv
+__pycache__/
+/.Bat
+/profiles
+*.zip
