@@ -12,6 +12,7 @@ import time
 import json
 import ctypes
 import os
+import random
 
 try:
     from pynput import keyboard as pynput_keyboard
@@ -317,11 +318,16 @@ class App(tk.Tk):
         # Create tabs
         recorder_tab = tk.Frame(self.notebook, bg=BG)
         autoclicker_tab = tk.Frame(self.notebook, bg=BG)
+        randomized_tab = tk.Frame(self.notebook, bg=BG)
         profiles_tab = tk.Frame(self.notebook, bg=BG)
         
         self.notebook.add(recorder_tab, text=" Recorder ")
         self.notebook.add(autoclicker_tab, text=" Autoclicker ")
+        self.notebook.add(randomized_tab, text=" Randomized ")
         self.notebook.add(profiles_tab, text=" Profiles ")
+        
+        # Initialize randomized playback state
+        self.randomized_playing = False
 
         # ═══════════════════════════════════════════════════════════════════════
         # RECORDER TAB
@@ -559,6 +565,126 @@ class App(tk.Tk):
         self.panic_label.pack()
 
         # ═══════════════════════════════════════════════════════════════════════
+        # RANDOMIZED TAB
+        # ═══════════════════════════════════════════════════════════════════════
+
+        # Randomization settings
+        rand_card = tk.Frame(randomized_tab, bg=CARD, pady=12, padx=16)
+        rand_card.pack(fill="x", padx=0, pady=(0,10))
+        
+        tk.Label(rand_card, text="RANDOMIZED INPUTS SETTINGS",
+                 font=("Courier New",8), bg=CARD, fg=DIM).pack(anchor="w", pady=(0,6))
+
+        # Min/Max delays
+        delay_row1 = tk.Frame(rand_card, bg=CARD)
+        delay_row1.pack(fill="x", pady=4)
+        tk.Label(delay_row1, text="Min delay (ms):", font=FONT, bg=CARD, fg=TEXT, width=16, anchor="w").pack(side="left")
+        self.rand_min_delay_var = tk.StringVar(value="50")
+        vcmd_int = (self.register(lambda v: v.isdigit() or v == ""), "%P")
+        tk.Entry(delay_row1, textvariable=self.rand_min_delay_var, font=FONT, width=8,
+                 bg="#2a2a2a", fg=ACCENT, insertbackground=ACCENT, relief="flat",
+                 validate="key", validatecommand=vcmd_int).pack(side="left")
+
+        delay_row2 = tk.Frame(rand_card, bg=CARD)
+        delay_row2.pack(fill="x", pady=4)
+        tk.Label(delay_row2, text="Max delay (ms):", font=FONT, bg=CARD, fg=TEXT, width=16, anchor="w").pack(side="left")
+        self.rand_max_delay_var = tk.StringVar(value="200")
+        tk.Entry(delay_row2, textvariable=self.rand_max_delay_var, font=FONT, width=8,
+                 bg="#2a2a2a", fg=ACCENT, insertbackground=ACCENT, relief="flat",
+                 validate="key", validatecommand=vcmd_int).pack(side="left")
+
+        self._sep_frame(randomized_tab)
+
+        # Button selection for randomization
+        buttons_card = tk.Frame(randomized_tab, bg=CARD, pady=12, padx=16)
+        buttons_card.pack(fill="x", padx=0, pady=(0,10))
+        
+        tk.Label(buttons_card, text="SELECT BUTTONS TO USE",
+                 font=("Courier New",8), bg=CARD, fg=DIM).pack(anchor="w", pady=(0,6))
+        
+        buttons_frame = tk.Frame(buttons_card, bg=CARD)
+        buttons_frame.pack(fill="x", pady=4)
+        
+        # Mouse buttons
+        mouse_frame = tk.Frame(buttons_frame, bg=CARD)
+        mouse_frame.pack(side="left", padx=(0,10))
+        tk.Label(mouse_frame, text="Mouse Buttons:", font=("Courier New",8), bg=CARD, fg=DIM).pack(anchor="w", pady=(0,4))
+        
+        self.rand_mouse_left_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(mouse_frame, text="Left Click", variable=self.rand_mouse_left_var,
+                       font=FONT, bg=CARD, fg=TEXT, selectcolor="#2a2a2a",
+                       activebackground=CARD, activeforeground=ACCENT).pack(anchor="w")
+        
+        self.rand_mouse_right_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(mouse_frame, text="Right Click", variable=self.rand_mouse_right_var,
+                       font=FONT, bg=CARD, fg=TEXT, selectcolor="#2a2a2a",
+                       activebackground=CARD, activeforeground=ACCENT).pack(anchor="w")
+        
+        self.rand_mouse_middle_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(mouse_frame, text="Middle Click", variable=self.rand_mouse_middle_var,
+                       font=FONT, bg=CARD, fg=TEXT, selectcolor="#2a2a2a",
+                       activebackground=CARD, activeforeground=ACCENT).pack(anchor="w")
+        
+        # Keyboard buttons
+        kb_frame = tk.Frame(buttons_frame, bg=CARD)
+        kb_frame.pack(side="left", padx=(0,10))
+        tk.Label(kb_frame, text="Keyboard Buttons:", font=("Courier New",8), bg=CARD, fg=DIM).pack(anchor="w", pady=(0,4))
+        
+        self.rand_key_space_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(kb_frame, text="Space", variable=self.rand_key_space_var,
+                       font=FONT, bg=CARD, fg=TEXT, selectcolor="#2a2a2a",
+                       activebackground=CARD, activeforeground=ACCENT).pack(anchor="w")
+        
+        self.rand_key_enter_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(kb_frame, text="Enter", variable=self.rand_key_enter_var,
+                       font=FONT, bg=CARD, fg=TEXT, selectcolor="#2a2a2a",
+                       activebackground=CARD, activeforeground=ACCENT).pack(anchor="w")
+        
+        self.rand_key_a_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(kb_frame, text="A", variable=self.rand_key_a_var,
+                       font=FONT, bg=CARD, fg=TEXT, selectcolor="#2a2a2a",
+                       activebackground=CARD, activeforeground=ACCENT).pack(anchor="w")
+        
+        self.rand_key_w_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(kb_frame, text="W", variable=self.rand_key_w_var,
+                       font=FONT, bg=CARD, fg=TEXT, selectcolor="#2a2a2a",
+                       activebackground=CARD, activeforeground=ACCENT).pack(anchor="w")
+        
+        self.rand_key_d_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(kb_frame, text="D", variable=self.rand_key_d_var,
+                       font=FONT, bg=CARD, fg=TEXT, selectcolor="#2a2a2a",
+                       activebackground=CARD, activeforeground=ACCENT).pack(anchor="w")
+        
+        self.rand_key_s_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(kb_frame, text="S", variable=self.rand_key_s_var,
+                       font=FONT, bg=CARD, fg=TEXT, selectcolor="#2a2a2a",
+                       activebackground=CARD, activeforeground=ACCENT).pack(anchor="w")
+
+        self._sep_frame(randomized_tab)
+
+        # Randomized playback status
+        rps = tk.Frame(randomized_tab, bg=CARD, pady=12, padx=16)
+        rps.pack(fill="x", padx=0, pady=(0,10))
+        tk.Label(rps, text="STATUS", font=("Courier New",8), bg=CARD, fg=DIM).pack(anchor="w")
+        self.randomized_status_var = tk.StringVar(value="Idle")
+        self.randomized_status_lbl = tk.Label(rps, textvariable=self.randomized_status_var,
+                                   font=("Courier New",13,"bold"), bg=CARD, fg=ACCENT)
+        self.randomized_status_lbl.pack(anchor="w")
+
+        # Randomized playback buttons
+        self.randomized_btn = tk.Button(randomized_tab, text="▶  START RANDOMIZED",
+            font=("Courier New",11,"bold"), bg="#2a5a2a", fg="#00ff88",
+            relief="flat", cursor="hand2", activebackground="#3a6a3a",
+            command=self._start_randomized, height=2, state="disabled")
+        self.randomized_btn.pack(fill="x", padx=0, pady=5)
+
+        self.randomized_stop_btn = tk.Button(randomized_tab, text="■  STOP RANDOMIZED",
+            font=("Courier New",11,"bold"), bg="#333", fg=DIM,
+            relief="flat", cursor="hand2", activebackground="#444", activeforeground=TEXT,
+            command=self._stop_randomized, height=2, state="disabled")
+        self.randomized_stop_btn.pack(fill="x", padx=0, pady=5)
+
+        # ═══════════════════════════════════════════════════════════════════════
         # PROFILES TAB
         # ═══════════════════════════════════════════════════════════════════════
 
@@ -755,6 +881,7 @@ class App(tk.Tk):
             self.rec_btn.config(text=f"⬤  RECORDING... ({stp_key} to stop)", bg="#ff6666")
             self.stop_btn.config(state="normal", bg="#555", fg="white")
             self.play_btn.config(state="disabled")
+            self.randomized_btn.config(state="disabled")
             self._set_status("Recording...", "#ff4444")
             self._clear_preview()
             self._poll()
@@ -774,8 +901,11 @@ class App(tk.Tk):
         n = len(self.recorder.events)
         if n > 0:
             self.play_btn.config(state="normal")
+            self.randomized_btn.config(state="normal")
             self._set_status(f"Ready · {n} events", "#00ff88")
         else:
+            self.play_btn.config(state="disabled")
+            self.randomized_btn.config(state="disabled")
             self._set_status("Idle", "#00ff88")
 
     def _stop_all(self):
@@ -785,6 +915,7 @@ class App(tk.Tk):
             self._set_status("Stopped", "#00ff88")
             self.stop_btn.config(state="disabled", bg="#333", fg="#555")
             self.play_btn.config(state="normal" if self.recorder.events else "disabled")
+            self.randomized_btn.config(state="normal" if self.recorder.events else "disabled")
             self.rec_btn.config(state="normal")
 
     def _toggle_loop(self):
@@ -900,6 +1031,7 @@ class App(tk.Tk):
                 self.recorder.events = json.load(f)
             self._update_count()
             self.play_btn.config(state="normal")
+            self.randomized_btn.config(state="normal")
             self._set_status(f"Loaded profile: {profile_name}", "#00ff88")
             self.profile_info_var.set(f"✓ Loaded: {profile_name} ({len(self.recorder.events)} events)")
             messagebox.showinfo("Loaded", f"Profile '{profile_name}' loaded!")
@@ -957,8 +1089,10 @@ class App(tk.Tk):
             self.autoclick_status_lbl.config(fg="#00ff88")
             mouse = pynput_mouse.Controller()
             start_time = time.time()
+            
             try:
                 while self.autoclicker_running:
+                    # Fixed button clicking
                     if button == "left":
                         mouse.click(pynput_mouse.Button.left)
                         print(f"[DEBUG] Left click")
@@ -968,6 +1102,7 @@ class App(tk.Tk):
                     elif button == "middle":
                         mouse.click(pynput_mouse.Button.middle)
                         print(f"[DEBUG] Middle click")
+                    
                     time.sleep(delay)
                     
                     # Check if we've exceeded a reasonable time limit (prevent infinite clicking)
@@ -984,6 +1119,106 @@ class App(tk.Tk):
 
         threading.Thread(target=click_loop, daemon=True).start()
 
+    def _start_randomized(self):
+        """Start randomized input playback"""
+        if self.randomized_playing:
+            return
+        
+        try:
+            min_delay = int(self.rand_min_delay_var.get()) / 1000.0
+            max_delay = int(self.rand_max_delay_var.get()) / 1000.0
+            
+            if min_delay < 0 or max_delay < 0 or min_delay > max_delay:
+                messagebox.showerror("Invalid input", "Min delay must be less than or equal to max delay, and both must be positive")
+                return
+            
+            # Check that at least one button is selected
+            selected = []
+            if self.rand_mouse_left_var.get():
+                selected.append(("mouse", "left"))
+            if self.rand_mouse_right_var.get():
+                selected.append(("mouse", "right"))
+            if self.rand_mouse_middle_var.get():
+                selected.append(("mouse", "middle"))
+            if self.rand_key_space_var.get():
+                selected.append(("key", "space"))
+            if self.rand_key_enter_var.get():
+                selected.append(("key", "return"))
+            if self.rand_key_a_var.get():
+                selected.append(("key", "a"))
+            if self.rand_key_w_var.get():
+                selected.append(("key", "w"))
+            if self.rand_key_d_var.get():
+                selected.append(("key", "d"))
+            if self.rand_key_s_var.get():
+                selected.append(("key", "s"))
+            
+            if not selected:
+                messagebox.showerror("No selection", "Select at least one button to randomize")
+                return
+            
+            self.randomized_playing = True
+            self._run_randomized(min_delay, max_delay, selected)
+        except ValueError:
+            messagebox.showerror("Invalid input", "Please enter valid delay values in milliseconds")
+            self.randomized_playing = False
+
+    def _stop_randomized(self):
+        """Stop randomized input playback"""
+        self.randomized_playing = False
+        self.randomized_btn.config(state="normal")
+        self.randomized_stop_btn.config(state="disabled")
+        self.randomized_status_var.set("Stopped")
+        self.randomized_status_lbl.config(fg="#ffaa00")
+
+    def _run_randomized(self, min_delay, max_delay, selected_buttons):
+        """Run randomized input playback"""
+        def random_loop():
+            self.randomized_btn.config(state="disabled")
+            self.randomized_stop_btn.config(state="normal")
+            self.randomized_status_var.set("Running...")
+            self.randomized_status_lbl.config(fg="#00ff88")
+            mouse = pynput_mouse.Controller()
+            start_time = time.time()
+            
+            try:
+                while self.randomized_playing:
+                    # Pick random button and delay
+                    current_delay = random.uniform(min_delay, max_delay)
+                    button_type, button_name = random.choice(selected_buttons)
+                    
+                    if button_type == "mouse":
+                        if button_name == "left":
+                            mouse.click(pynput_mouse.Button.left)
+                            print(f"[DEBUG] Randomized left click")
+                        elif button_name == "right":
+                            mouse.click(pynput_mouse.Button.right)
+                            print(f"[DEBUG] Randomized right click")
+                        elif button_name == "middle":
+                            mouse.click(pynput_mouse.Button.middle)
+                            print(f"[DEBUG] Randomized middle click")
+                    elif button_type == "key":
+                        send_key(button_name, key_up=False)
+                        time.sleep(0.05)
+                        send_key(button_name, key_up=True)
+                        print(f"[DEBUG] Randomized key press: {button_name}")
+                    
+                    time.sleep(current_delay)
+                    
+                    # Check if we've exceeded a reasonable time limit (prevent infinite clicking)
+                    if time.time() - start_time > 3600:  # 1 hour max
+                        break
+            except Exception as e:
+                print(f"[ERROR] Randomized playback error: {e}")
+            finally:
+                self.randomized_playing = False
+                self.after(0, lambda: self.randomized_btn.config(state="normal"))
+                self.after(0, lambda: self.randomized_stop_btn.config(state="disabled"))
+                self.after(0, lambda: self.randomized_status_var.set("Idle"))
+                self.after(0, lambda: self.randomized_status_lbl.config(fg="#00ff88"))
+
+        threading.Thread(target=random_loop, daemon=True).start()
+
     def _play(self):
         if not self.recorder.events or self.recorder.playing:
             return
@@ -994,6 +1229,7 @@ class App(tk.Tk):
             speed, repeat = 1.0, 1
 
         self.play_btn.config(state="disabled")
+        self.randomized_btn.config(state="disabled")
         self.rec_btn.config(state="disabled")
         self.stop_btn.config(state="normal", bg="#555", fg="white")
         self._set_status("Playing...", "#ffaa00")
@@ -1007,6 +1243,7 @@ class App(tk.Tk):
 
     def _on_done(self):
         self.play_btn.config(state="normal" if self.recorder.events else "disabled")
+        self.randomized_btn.config(state="normal" if self.recorder.events else "disabled")
         self.rec_btn.config(state="normal")
         self.stop_btn.config(state="disabled", bg="#333", fg="#555")
         self._set_status("Ready", "#00ff88")
@@ -1027,6 +1264,7 @@ class App(tk.Tk):
             self.recorder.load(path)
             self._update_count()
             self.play_btn.config(state="normal")
+            self.randomized_btn.config(state="normal")
             self._set_status(f"Loaded · {len(self.recorder.events)} events", "#00ff88")
 
 
