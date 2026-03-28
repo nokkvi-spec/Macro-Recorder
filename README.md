@@ -137,7 +137,7 @@ Check at least one option before recording!
 
 ## Support
 
-For bug reports, questions or feature requests, reach out to the developer: **Nölli_Hestur** nollihesturdev@gmail.com
+Use the issues for this repo if you have any questions and feature requests and feel free to create pull requests
 
 ---
 
