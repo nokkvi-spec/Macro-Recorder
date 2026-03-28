@@ -4,3 +4,4 @@ __pycache__/
 /.Bat
 /profiles
 *.zip
+clear_icon_cache.ps1
