@@ -881,7 +881,6 @@ class App(tk.Tk):
             self.rec_btn.config(text=f"⬤  RECORDING... ({stp_key} to stop)", bg="#ff6666")
             self.stop_btn.config(state="normal", bg="#555", fg="white")
             self.play_btn.config(state="disabled")
-            self.randomized_btn.config(state="disabled")
             self._set_status("Recording...", "#ff4444")
             self._clear_preview()
             self._poll()
