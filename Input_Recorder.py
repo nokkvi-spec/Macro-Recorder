@@ -256,7 +256,6 @@ class MacroRecorder:
             self.events = json.load(f)
 
 
-# ─── GUI ───────────────────────────────────────────────────────────────────────
 
 # Default hotkeys
 DEFAULT_HOTKEYS = {
@@ -270,8 +269,8 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("MacroRecorder")
-        self.geometry("420x900")
-        self.resizable(False, False)
+        self.geometry("500x900")
+        self.resizable(True, True)
         self.configure(bg="#0f0f0f")
 
         self.recorder = MacroRecorder()
@@ -280,6 +279,12 @@ class App(tk.Tk):
         self._registered = []
         self._listening_for = None  # which hotkey slot is being rebound
         self.autoclicker_running = False  # Flag to track autoclicker state
+
+        # Autoclicker custom hotkey state
+        self.autoclick_mode_var = None
+        self.autoclick_hotkey_var = None
+        self._autoclick_hotkey_id = None
+        self._binding_autoclicker = False
 
         self._build_ui()
         self._register_hotkeys()
@@ -513,6 +518,30 @@ class App(tk.Tk):
                  validate="key", validatecommand=vcmd)
         self.click_delay_entry.pack(side="left")
 
+        # Autoclicker binding mode (Normal / Custom Hotkey)
+        r5 = tk.Frame(ac_card, bg=CARD)
+        r5.pack(fill="x", pady=4)
+        tk.Label(r5, text="Autoclicker Mode:", font=FONT, bg=CARD, fg=TEXT, width=16, anchor="w").pack(side="left")
+        self.autoclick_mode_var = tk.StringVar(value="normal")
+        tk.Radiobutton(r5, text="Normal", variable=self.autoclick_mode_var, value="normal",
+                   bg=CARD, fg=ACCENT, selectcolor="#2a2a2a", activebackground=CARD).pack(side="left")
+        tk.Radiobutton(r5, text="Custom Hotkey", variable=self.autoclick_mode_var, value="custom",
+                   bg=CARD, fg=ACCENT, selectcolor="#2a2a2a", activebackground=CARD).pack(side="left")
+
+        bind_row = tk.Frame(ac_card, bg=CARD)
+        bind_row.pack(fill="x", pady=4)
+        self.autoclick_hotkey_var = tk.StringVar(value="")
+        tk.Label(bind_row, text="Hotkey:", font=FONT, bg=CARD, fg=TEXT, width=16, anchor="w").pack(side="left")
+        self.autoclick_bind_btn = tk.Button(bind_row, text="Bind Hotkey", font=FONT,
+                bg="#2a2a2a", fg="#00ff88", relief="flat", cursor="hand2",
+                command=self._start_bind_autoclicker_hotkey)
+        self.autoclick_bind_btn.pack(side="left")
+        self.autoclick_unbind_btn = tk.Button(bind_row, text="Unbind", font=FONT,
+                bg="#333", fg=DIM, relief="flat", cursor="hand2",
+                command=self._unbind_autoclicker_hotkey, state="disabled")
+        self.autoclick_unbind_btn.pack(side="left", padx=(6,0))
+        tk.Label(bind_row, textvariable=self.autoclick_hotkey_var, font=("Courier New",9), bg=CARD, fg=ACCENT).pack(side="left", padx=(8,0))
+
         # Mouse button selection
         r4 = tk.Frame(ac_card, bg=CARD)
         r4.pack(fill="x", pady=4)
@@ -685,6 +714,9 @@ class App(tk.Tk):
         self.randomized_stop_btn.pack(fill="x", padx=0, pady=5)
 
         # ═══════════════════════════════════════════════════════════════════════
+        # (Soundboard removed)
+
+        # ═══════════════════════════════════════════════════════════════════════
         # PROFILES TAB
         # ═══════════════════════════════════════════════════════════════════════
 
@@ -817,6 +849,71 @@ class App(tk.Tk):
 
         self.after(0, update)
         return False  # stop listener
+
+    # ── Autoclicker hotkey binding ───────────────────────────────────────────
+
+    def _start_bind_autoclicker_hotkey(self):
+        """Listen for next keypress to bind autoclicker toggle to."""
+        if getattr(self, '_binding_autoclicker', False):
+            return
+        self._binding_autoclicker = True
+        # provide visual feedback on the bind button; find the button if it exists
+        try:
+            self.autoclick_bind_btn.config(text="Press a key...", fg="#ffaa00")
+        except Exception:
+            pass
+        self._autoclick_bind_listener = pynput_keyboard.Listener(on_press=self._on_autoclick_bind)
+        self._autoclick_bind_listener.start()
+
+    def _on_autoclick_bind(self, key):
+        try:
+            key_name = key.char if key.char else str(key).replace("Key.", "")
+        except Exception:
+            key_name = str(key).replace("Key.", "")
+        self._binding_autoclicker = False
+        try:
+            self._autoclick_bind_listener.stop()
+        except Exception:
+            pass
+        self.autoclick_hotkey_var.set(key_name.upper())
+        try:
+            self.autoclick_bind_btn.config(text="Bind Hotkey", fg="#00ff88")
+            self.autoclick_unbind_btn.config(state="normal")
+        except Exception:
+            pass
+        self._register_autoclick_hotkey(key_name)
+        return False
+
+    def _register_autoclick_hotkey(self, key_name):
+        try:
+            if getattr(self, '_autoclick_hotkey_id', None):
+                try:
+                    kb.remove_hotkey(self._autoclick_hotkey_id)
+                except Exception:
+                    pass
+            hid = kb.add_hotkey(key_name, lambda: self.after(0, self._toggle_autoclicker_hotkey))
+            self._autoclick_hotkey_id = hid
+        except Exception as e:
+            print(f"Failed to register autoclicker hotkey: {e}")
+
+    def _unbind_autoclicker_hotkey(self):
+        try:
+            if getattr(self, '_autoclick_hotkey_id', None):
+                kb.remove_hotkey(self._autoclick_hotkey_id)
+                self._autoclick_hotkey_id = None
+            self.autoclick_hotkey_var.set("")
+            try:
+                self.autoclick_unbind_btn.config(state="disabled")
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"Failed to unbind autoclicker hotkey: {e}")
+
+    def _toggle_autoclicker_hotkey(self):
+        if self.autoclicker_running:
+            self._stop_autoclicker()
+        else:
+            self._start_autoclicker()
 
     def _register_hotkeys(self):
         """Clear and re-register all hotkeys."""
@@ -1266,7 +1363,8 @@ class App(tk.Tk):
             self.randomized_btn.config(state="normal")
             self._set_status(f"Loaded · {len(self.recorder.events)} events", "#00ff88")
 
-
+    
 if __name__ == "__main__":
     app = App()
     app.mainloop()
+
